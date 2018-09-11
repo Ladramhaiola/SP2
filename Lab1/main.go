@@ -47,7 +47,14 @@ func (r *Record) copy(other *Record) {
 }
 
 func (r *Record) tostring() string {
-	return fmt.Sprintf("Record ( key: %s, mod: %d, functional: %f)\n", r.key.str, r.key.mod, r.fnc.f)
+	if r.isEmpty() {
+		return fmt.Sprintln("Record ( empty )")
+	}
+	return fmt.Sprintf("Record ( key: %s, mod: %d, functional: %0.2f)\n", r.key.str, r.key.mod, r.fnc.f)
+}
+
+func (r *Record) print() {
+	fmt.Println(r.tostring())
 }
 
 func newRecord(keyStr string, keyMod uint16, funcF float64) *Record {
@@ -156,6 +163,7 @@ func (tb *Table) pack() {
 
 // binary search implementation for table
 func (tb *Table) selectBinary(key Key) *Record {
+	tb.sortByStr(key.str, 0)
 	l, r := 0, len(tb.records)
 	for l != r {
 		mid := (l + r) / 2
@@ -181,7 +189,7 @@ func (tb *Table) insertBinary(rec *Record) *Record {
 }
 
 func (tb *Table) deleteBinary(key Key) {
-	res := tb.selectLinear(key)
+	res := tb.selectBinary(key)
 	if !res.isEmpty() {
 		res.clear()
 		return
@@ -190,7 +198,7 @@ func (tb *Table) deleteBinary(key Key) {
 }
 
 func (tb *Table) updateBinary(rec *Record, key Key) *Record {
-	res := tb.selectLinear(key)
+	res := tb.selectBinary(key)
 	if !res.isEmpty() {
 		res.copy(rec)
 	}
@@ -211,10 +219,14 @@ func (tb *Table) sortByStr(str string, limit int) []*Record {
 	return tb.records[:limit]
 }
 
+func (tb *Table) searchClosest(str string) *Record {
+	return tb.sortByStr(str, 1)[0]
+}
+
 func (tb *Table) print() {
 	fmt.Println("Table:")
-	for _, elem := range tb.records {
-		fmt.Printf("\t%s", elem.tostring())
+	for i, elem := range tb.records {
+		fmt.Printf("\t%d %s", i, elem.tostring())
 	}
 }
 
@@ -228,14 +240,10 @@ func main() {
 		emptyRecord(),
 		newRecord("Kuzmenko", 14, 78.3),
 		emptyRecord(),
+		newRecord("Burbil", 9, 12.301),
+		newRecord("Vel", 2, 0.56),
 	}}
-	t.selectDirect(3)
-	t.selectLinear(Key{"Mirchuk", 7})
-	t.selectBinary(Key{"Mirchuk", 7})
-	t.insertBinary(newRecord("Cherpatiuk", 9, 35.6))
-	t.updateLinear(Key{"Cherpatiuk", 9}, newRecord("Aksyonenko", 34, 1.2))
-	t.deleteBinary(Key{"Aksyonenko", 34})
-	t.print()
+	testTable(t)
 }
 
 // By is a type of a "less" function that defines the ordering of its Record arguments
@@ -279,6 +287,8 @@ func cmpStr(a, b string) int {
 	for i := 0; i < limit; i++ {
 		if b[i] == a[i] {
 			n++
+		} else {
+			break
 		}
 	}
 	return n
