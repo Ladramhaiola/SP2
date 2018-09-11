@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -23,6 +24,11 @@ type Func struct {
 type Record struct {
 	key Key
 	fnc Func
+}
+
+// Table -
+type Table struct {
+	records []*Record
 }
 
 // check if record is empty
@@ -63,11 +69,6 @@ func newRecord(keyStr string, keyMod uint16, funcF float64) *Record {
 
 func emptyRecord() *Record {
 	return &Record{}
-}
-
-// Table -
-type Table struct {
-	records []*Record
 }
 
 // get record by index
@@ -219,8 +220,21 @@ func (tb *Table) sortByStr(str string, limit int) []*Record {
 	return tb.records[:limit]
 }
 
-func (tb *Table) searchClosest(str string) *Record {
-	return tb.sortByStr(str, 1)[0]
+func (tb *Table) searchClosest(str string) ([]*Record, error) {
+	result := []*Record{}
+	for _, rec := range tb.records {
+		if cmpStr(str, rec.key.str) > 0 {
+			result = append(result, rec)
+		}
+	}
+	if len(result) < 1 {
+		return nil, errors.New("nothing found")
+	}
+	t := &Table{result}
+	By(func(r1, r2 *Record) bool {
+		return cmpStr(str, r1.key.str) > cmpStr(str, r2.key.str)
+	}).Sort(t)
+	return t.records, nil
 }
 
 func (tb *Table) print() {
